@@ -53,7 +53,7 @@ app.post("/initiatePayment", async (req, res) => {
 
     // Step 3: Send payment request
     const payResp = await axios.post(
-      "https://api.phonepe.com/v3/payment/init",
+      "https://api.phonepe.com/apis/hermes/pg/v1/pay",
       paymentPayload,
       {
         headers: {
