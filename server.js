@@ -73,7 +73,12 @@ app.post("/initiatePayment", async (req, res) => {
     return res.json({ success: true, url: redirectUrl });
 
   } catch (error) {
-    console.error("Payment Error:", error.response?.data || error.message);
+    console.error("Payment Error Full:", {
+  status: error.response?.status,
+  data: error.response?.data,
+  headers: error.response?.headers,
+  message: error.message
+});
     res.status(500).json({
       success: false,
       message: "Server error",
