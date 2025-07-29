@@ -10,6 +10,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.options("*", cors());
+
 app.use(express.json());
 
 // ==== OAuth Credentials ====
@@ -25,13 +26,13 @@ app.post("/initiatePayment", async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    // Step 1: Get access token
+    // Step 1: Get access token from PhonePe
     const tokenResp = await axios.post(
-      "https://api.phonepe.com/oauth2/token",
+      "https://api.phonepe.com/v3/oauth/token",  // <-- PRODUCTION OAUTH URL
       "grant_type=client_credentials",
       {
         headers: {
-          "Authorization": "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+          Authorization: "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
           "Content-Type": "application/x-www-form-urlencoded"
         }
       }
@@ -50,35 +51,34 @@ app.post("/initiatePayment", async (req, res) => {
       paymentInstrument: { type: "PAY_PAGE" }
     };
 
-    // Step 3: Send to correct OAuth endpoint
-    const payResp = await axios.post(
-      "https://api.phonepe.com/pg/v1/payment", // ✅ OAuth endpoint
+    // Step 3: Make payment request using token
+    const paymentResp = await axios.post(
+      "https://api.phonepe.com/v3/payment/init",
       paymentPayload,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
           "X-CLIENT-ID": clientId,
-          "X-CLIENT-VERSION": clientVersion,
-          "Content-Type": "application/json"
+          "X-CLIENT-VERSION": clientVersion
         }
       }
     );
 
-    const redirectUrl = payResp.data?.data?.instrumentResponse?.redirectInfo?.url;
+    const paymentUrl = paymentResp.data?.data?.redirectInfo?.url;
 
-    if (!redirectUrl) {
-      throw new Error("Payment URL not received from PhonePe");
+    if (!paymentUrl) {
+      throw new Error("Payment URL not received");
     }
 
-    return res.json({ success: true, url: redirectUrl });
+    res.json({ success: true, url: paymentUrl });
 
   } catch (error) {
     console.error("Payment Error Full:", {
-  status: error.response?.status,
-  data: error.response?.data,
-  headers: error.response?.headers,
-  message: error.message
-});
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
     res.status(500).json({
       success: false,
       message: "Server error",
