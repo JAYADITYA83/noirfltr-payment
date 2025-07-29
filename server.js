@@ -4,9 +4,8 @@ const cors = require("cors");
 
 const app = express();
 
-// CORS fix for Render + your domain
 app.use(cors({
-  origin: "https://www.noirfltr.live",
+  origin: "https://www.noirfltr.live", // allow your frontend
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -14,12 +13,12 @@ app.options("*", cors());
 
 app.use(express.json());
 
-// Credentials you already confirmed
+// ==== Your PhonePe OAuth Credentials ====
 const clientId = "SU2507281958021038993436";
 const clientSecret = "6fe24886-5b40-4863-bca5-fcc39239ea97";
 const clientVersion = "1";
 
-const redirectUrl = "https://www.noirfltr.live/checkout-success.html";
+// ==== Routes ====
 
 app.post("/initiatePayment", async (req, res) => {
   try {
@@ -29,8 +28,8 @@ app.post("/initiatePayment", async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    // Step 1: Get OAuth access token
-    const tokenResponse = await axios.post(
+    // Step 1: Get access token from PhonePe
+    const tokenResp = await axios.post(
       "https://api-preprod.phonepe.com/oauth2/token",
       "grant_type=client_credentials",
       {
@@ -41,25 +40,26 @@ app.post("/initiatePayment", async (req, res) => {
       }
     );
 
-    const accessToken = tokenResponse.data.access_token;
+    const accessToken = tokenResp.data.access_token;
 
-    // Step 2: Make payment request
+    // Step 2: Prepare payment payload
     const paymentPayload = {
       merchantTransactionId: orderId,
       merchantUserId: mobile,
-      amount: Math.round(amount * 100),
-      redirectUrl,
+      amount: Math.round(amount * 100), // ₹ to paise
+      redirectUrl: "https://www.noirfltr.live/checkout-success.html",
       redirectMode: "POST",
-      callbackUrl: "https://webhook.site/test",
+      callbackUrl: "https://webhook.site/test", // optional
       paymentInstrument: { type: "PAY_PAGE" }
     };
 
-    const paymentResponse = await axios.post(
+    // Step 3: Make payment request
+    const payResp = await axios.post(
       "https://api-preprod.phonepe.com/pg/v1/pay",
       paymentPayload,
       {
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "X-CLIENT-ID": clientId,
           "X-CLIENT-VERSION": clientVersion,
           "Content-Type": "application/json"
@@ -67,21 +67,26 @@ app.post("/initiatePayment", async (req, res) => {
       }
     );
 
-    const redirectUrlResponse = paymentResponse.data?.data?.instrumentResponse?.redirectInfo?.url;
-    if (!redirectUrlResponse) throw new Error("Payment URL not returned from PhonePe");
+    const redirectUrl = payResp.data?.data?.instrumentResponse?.redirectInfo?.url;
 
-    res.json({ success: true, url: redirectUrlResponse });
+    if (!redirectUrl) {
+      throw new Error("Payment URL not received from PhonePe");
+    }
 
-  } catch (err) {
-    console.error("Payment Error:", err.response?.data || err.message);
+    return res.json({ success: true, url: redirectUrl });
+
+  } catch (error) {
+    console.error("Payment Error:", error.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: "Server error",
-      detail: err.response?.data || err.message
+      detail: error.response?.data || error.message
     });
   }
 });
 
-app.listen(3000, () => {
-  console.log("✅ Server running on port 3000");
+// ==== Start Server ====
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
