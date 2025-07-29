@@ -35,7 +35,7 @@ app.post("/initiatePayment", async (req, res) => {
     };
 
     const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
-    const stringToSign = base64Payload + "/pg/v1/pay" + saltKey;
+    const stringToSign = base64Payload + "/pg-sandbox/pg/v1/pay" + saltKey;
     const xVerify = crypto.createHash("sha256").update(stringToSign).digest("hex") + "###" + saltIndex;
 
     const response = await axios.post(
