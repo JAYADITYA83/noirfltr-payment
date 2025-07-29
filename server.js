@@ -1,19 +1,26 @@
 const express = require("express");
+const crypto = require("crypto");
 const cors = require("cors");
 const axios = require("axios");
+
 const app = express();
 
-app.use(cors({ origin: "https://www.noirfltr.live" }));
+// ✅ Handle CORS properly
+app.use(cors({
+  origin: "https://www.noirfltr.live",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.options("*", cors());
+
 app.use(express.json());
 
-// 🔐 Your OAuth credentials
 const clientId = "SU2507281958021038993436";
 const clientSecret = "6fe24886-5b40-4863-bca5-fcc39239ea97";
 const clientVersion = "1";
 
-// 📦 Sandbox API base URL
 const baseUrl = "https://api-preprod.phonepe.com";
-const redirectUrl = "https://www.noirfltr.live/checkout-success.html"; // 👈 Change if needed
+const redirectUrl = "https://www.noirfltr.live/checkout-success.html";
 
 app.post("/initiatePayment", async (req, res) => {
   try {
@@ -23,8 +30,8 @@ app.post("/initiatePayment", async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    // 1️⃣ Generate OAuth token
-    const tokenResponse = await axios.post(
+    // 1️⃣ OAuth Token
+    const tokenRes = await axios.post(
       `${baseUrl}/oauth2/token`,
       "grant_type=client_credentials",
       {
@@ -35,24 +42,20 @@ app.post("/initiatePayment", async (req, res) => {
       }
     );
 
-    const accessToken = tokenResponse.data.access_token;
-    if (!accessToken) throw new Error("Access token not received from PhonePe");
+    const accessToken = tokenRes.data.access_token;
 
-    // 2️⃣ Prepare payment payload
+    // 2️⃣ Payment Payload
     const payload = {
       merchantTransactionId: orderId,
       merchantUserId: mobile,
       amount: Math.round(amount * 100),
-      redirectUrl: redirectUrl,
+      redirectUrl,
       redirectMode: "POST",
-      callbackUrl: "https://webhook.site/test", // optional for now
-      paymentInstrument: {
-        type: "PAY_PAGE"
-      }
+      callbackUrl: "https://webhook.site/test",
+      paymentInstrument: { type: "PAY_PAGE" }
     };
 
-    // 3️⃣ Make payment request
-    const paymentResponse = await axios.post(
+    const payRes = await axios.post(
       `${baseUrl}/pg/v1/pay`,
       payload,
       {
@@ -65,8 +68,8 @@ app.post("/initiatePayment", async (req, res) => {
       }
     );
 
-    const paymentUrl = paymentResponse.data?.data?.instrumentResponse?.redirectInfo?.url;
-    if (!paymentUrl) throw new Error("Payment URL not received");
+    const paymentUrl = payRes.data?.data?.instrumentResponse?.redirectInfo?.url;
+    if (!paymentUrl) throw new Error("No payment URL");
 
     res.json({ success: true, url: paymentUrl });
 
