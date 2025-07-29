@@ -5,20 +5,17 @@ const cors = require("cors");
 const app = express();
 
 app.use(cors({
-  origin: "https://www.noirfltr.live", // allow your frontend
+  origin: "https://www.noirfltr.live",
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.options("*", cors());
-
 app.use(express.json());
 
-// ==== Your PhonePe OAuth Credentials ====
+// ==== OAuth Credentials ====
 const clientId = "SU2507281958021038993436";
 const clientSecret = "6fe24886-5b40-4863-bca5-fcc39239ea97";
 const clientVersion = "1";
-
-// ==== Routes ====
 
 app.post("/initiatePayment", async (req, res) => {
   try {
@@ -28,9 +25,9 @@ app.post("/initiatePayment", async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    // Step 1: Get access token from PhonePe
+    // Step 1: Get access token
     const tokenResp = await axios.post(
-      "https://api-preprod.phonepe.com/oauth2/token",
+      "https://api.phonepe.com/oauth2/token",
       "grant_type=client_credentials",
       {
         headers: {
@@ -46,16 +43,16 @@ app.post("/initiatePayment", async (req, res) => {
     const paymentPayload = {
       merchantTransactionId: orderId,
       merchantUserId: mobile,
-      amount: Math.round(amount * 100), // ₹ to paise
+      amount: Math.round(amount * 100),
       redirectUrl: "https://www.noirfltr.live/checkout-success.html",
       redirectMode: "POST",
-      callbackUrl: "https://webhook.site/test", // optional
+      callbackUrl: "https://webhook.site/test",
       paymentInstrument: { type: "PAY_PAGE" }
     };
 
-    // Step 3: Make payment request
+    // Step 3: Send to correct OAuth endpoint
     const payResp = await axios.post(
-      "https://api-preprod.phonepe.com/pg/v1/pay",
+      "https://api.phonepe.com/pg/v1/payment", // ✅ OAuth endpoint
       paymentPayload,
       {
         headers: {
@@ -85,7 +82,6 @@ app.post("/initiatePayment", async (req, res) => {
   }
 });
 
-// ==== Start Server ====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
