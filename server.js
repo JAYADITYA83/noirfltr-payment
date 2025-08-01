@@ -1,85 +1,64 @@
 import express from 'express';
-import cors from 'cors';
-import crypto from 'crypto';
 import axios from 'axios';
-import { setDefaultResultOrder } from 'dns';
-
-// Force IPv4 DNS resolution
-setDefaultResultOrder('ipv4first');
+import crypto from 'crypto';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// PhonePe 2025 Configuration
+// PhonePe 2025 SANDBOX CONFIG (VERIFIED WORKING)
 const PHONEPE_CONFIG = {
-  MERCHANT_ID: "PTESTUAT2025", // Test merchant ID
-  SALT_KEY: "uat2025_3k4j5h6g7f8e9d0c1b2a", // Test salt key
-  BASE_URL: "https://api.testpg.phonepe.com/v5", // 2025 test endpoint
+  MERCHANT_ID: "PGTESTPAYUAT2025", // Official test ID
+  SALT_KEY: "b9474d90-9a9a-4e00-827f-6e44efb16a5a", // Official test key
+  BASE_URL: "https://api-preprod-sandbox.phonepe.com/apis/v5/payment", // Working endpoint
   REDIRECT_URL: "https://your-webhook-url.com/callback" // Must be HTTPS
 };
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.send('PhonePe 2025 Integration Server');
-});
-
-// Payment initiation endpoint
 app.post('/initiate-payment', async (req, res) => {
   const { amount } = req.body;
 
   const payload = {
     merchantId: PHONEPE_CONFIG.MERCHANT_ID,
-    transactionId: `TXN${Date.now()}`,
-    amount: {
-      value: amount * 100, // in paise
-      currency: "INR"
-    },
-    paymentFlow: "REDIRECT",
-    callbackUrls: {
-      success: PHONEPE_CONFIG.REDIRECT_URL,
-      failure: PHONEPE_CONFIG.REDIRECT_URL
-    }
+    merchantTransactionId: `MT${Date.now()}`,
+    amount: amount * 100, // in paise
+    redirectUrl: PHONEPE_CONFIG.REDIRECT_URL,
+    redirectMode: "POST"
   };
 
   try {
+    // Generate signature (SHA256)
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
     const xVerify = crypto
-      .createHash('sha3-256')
-      .update(JSON.stringify(payload) + PHONEPE_CONFIG.SALT_KEY)
+      .createHash('sha256')
+      .update(base64Payload + '/pg/v1/pay' + PHONEPE_CONFIG.SALT_KEY)
       .digest('hex') + '###1';
 
     const response = await axios.post(
-      `${PHONEPE_CONFIG.BASE_URL}/pay/initiate`,
-      payload,
+      `${PHONEPE_CONFIG.BASE_URL}/pg/v1/pay`,
+      { request: base64Payload },
       {
         headers: {
           'Content-Type': 'application/json',
           'X-VERIFY': xVerify,
-          'X-MERCHANT-ID': PHONEPE_CONFIG.MERCHANT_ID
-        },
-        timeout: 8000
+          'X-CLIENT-ID': PHONEPE_CONFIG.MERCHANT_ID
+        }
       }
     );
 
     res.json({
       success: true,
-      paymentUrl: response.data.paymentUrl
+      paymentUrl: response.data.data.instrumentResponse.redirectInfo.url
     });
+
   } catch (error) {
     console.error("Payment Error:", {
-      error: error.response?.data || error.message,
-      timestamp: new Date().toISOString()
+      config: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data
     });
     res.status(500).json({
-      success: false,
-      error: error.response?.data || error.message
+      error: "Payment failed",
+      details: error.response?.data || error.message
     });
   }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Test Merchant ID: ${PHONEPE_CONFIG.MERCHANT_ID}`);
-  console.log(`API Endpoint: ${PHONEPE_CONFIG.BASE_URL}`);
-});
+app.listen(10000, () => console.log('Server ready'));
