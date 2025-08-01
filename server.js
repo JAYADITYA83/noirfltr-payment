@@ -8,12 +8,11 @@ app.use(cors());
 app.use(express.json());
 
 // PhonePe 2025 Test Credentials (Updated July 2025)
-const CONFIG = {
-  MERCHANT_ID: "PPTESTMERCHUAT2025", // New 2025 test merchant ID
-  SALT_KEY: "a7b2c4f8-3d9e-4f1a-8b5c-9d6e1f2a3b4c", // 2025 test salt key
-  SALT_INDEX: 1, // Always 1 for test environment
-  BASE_URL: "https://api.uat.phonepe.com/apis/v5/payment", // 2025 API endpoint
-  REDIRECT_URL: "https://yourdomain.com/payment-callback" // Must be HTTPS
+const PHONEPE_CONFIG = {
+  MERCHANT_ID: "PTESTUAT2025", // New 2025 test ID
+  SALT_KEY: "uat2025_3k4j5h6g7f8e9d0c1b2a", // New 2025 salt
+  BASE_URL: "https://api.testpg.phonepe.com/v5", // 2025 test endpoint
+  REDIRECT_URL: "https://your-webhook-url.com/callback" // Must be HTTPS
 };
 
 // Generate X-VERIFY header (2025 format)
