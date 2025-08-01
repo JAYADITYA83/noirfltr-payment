@@ -31,18 +31,18 @@ app.post("/create-payment", async (req, res) => {
   const merchantTransactionId = `TXN${Date.now()}`;
   const payUrl = "/pg/v1/pay";
 
-  const payload = {
-    clientId: PHONEPE_MERCHANT_ID,
-    merchantTransactionId,
-    merchantUserId: email,
-    amount: amount * 100,
-    redirectUrl: REDIRECT_URL,
-    redirectMode: "POST",
-    mobileNumber: "9999999999",
-    paymentInstrument: {
-      type: "PAY_PAGE"
-    }
-  };
+const payload = {
+  clientId: PHONEPE_MERCHANT_ID,
+  merchantTransactionId,
+  merchantUserId: email,
+  amount: Math.round(amount * 100),  // ensure integer
+  redirectUrl: REDIRECT_URL,
+  redirectMode: "POST",
+  mobileNumber: "9999999999",
+  paymentInstrument: {
+    type: "PAY_PAGE"
+  }
+};
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
   const stringToHash = payloadBase64 + payUrl + PHONEPE_SECRET;
