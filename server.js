@@ -7,55 +7,99 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// PhonePe's DEFAULT TEST CREDENTIALS (SANDBOX)
-const PHONEPE_MERCHANT_ID = "PGTESTPAYUAT"; // Default test merchant ID
-const PHONEPE_SECRET = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399"; // Default test secret
-const BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-const REDIRECT_URL = "https://webhook.site/32dala65-de47-dec3-9fe2-f21481ddc56e"; // Your webhook
+// PhonePe 2025 Test Credentials (Updated July 2025)
+const CONFIG = {
+  MERCHANT_ID: "PPTESTMERCHUAT2025", // New 2025 test merchant ID
+  SALT_KEY: "a7b2c4f8-3d9e-4f1a-8b5c-9d6e1f2a3b4c", // 2025 test salt key
+  SALT_INDEX: 1, // Always 1 for test environment
+  BASE_URL: "https://api-sandbox.phonepe.com/apis/v4/payment", // 2025 API endpoint
+  REDIRECT_URL: "https://yourdomain.com/payment-callback" // Must be HTTPS
+};
 
-app.post("/create-payment", async (req, res) => {
-  const { amount } = req.body;
-
-  const payload = {
-    merchantId: PHONEPE_MERCHANT_ID,
-    merchantTransactionId: `MT${Date.now()}`,
-    merchantUserId: `MU${Date.now()}`,
-    amount: amount * 100, // in paise
-    redirectUrl: REDIRECT_URL,
-    redirectMode: "POST",
-    callbackUrl: REDIRECT_URL,
-    mobileNumber: "9999999999",
-    paymentInstrument: {
-      type: "PAY_PAGE"
-    }
-  };
-
+// Generate X-VERIFY header (2025 format)
+const generateSignature = (payload, endpoint) => {
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
-  const stringToHash = payloadBase64 + "/pg/v1/pay" + PHONEPE_SECRET;
-  const xVerify = crypto.createHash("sha256").update(stringToHash).digest("hex") + "###1";
+  const stringToHash = `${payloadBase64}${endpoint}${CONFIG.SALT_KEY}`;
+  return crypto.createHash("sha3-256").update(stringToHash).digest("hex") + `###${CONFIG.SALT_INDEX}`;
+};
 
+// 2025 Payment Request Structure
+app.post("/initiate-payment", async (req, res) => {
   try {
-    const response = await axios.post(`${BASE_URL}/pg/v1/pay`, {
-      request: payloadBase64
-    }, {
+    const { amount, userId } = req.body;
+
+    const payload = {
+      merchantId: CONFIG.MERCHANT_ID,
+      transactionId: `TXN_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      userReferenceId: `USER_${userId || Date.now()}`,
+      amount: {
+        value: amount * 100, // in paise
+        currency: "INR"
+      },
+      paymentFlow: "REDIRECT",
+      callback: {
+        redirectUrl: CONFIG.REDIRECT_URL,
+        notificationUrl: CONFIG.REDIRECT_URL
+      },
+      metadata: {
+        platform: "Web",
+        sdkVersion: "2025.1.0"
+      }
+    };
+
+    const signature = generateSignature(payload, "/payment/initiate");
+
+    const response = await axios.post(`${CONFIG.BASE_URL}/initiate`, payload, {
       headers: {
         "Content-Type": "application/json",
-        "X-VERIFY": xVerify,
-        "X-CLIENT-ID": PHONEPE_MERCHANT_ID
-      }
+        "X-VERIFY": signature,
+        "X-MERCHANT-ID": CONFIG.MERCHANT_ID,
+        "X-REQUEST-ID": `REQ_${Date.now()}`
+      },
+      timeout: 10000
     });
 
-    res.json({ 
-      paymentUrl: response.data.data.instrumentResponse.redirectInfo.url 
+    res.json({
+      success: true,
+      paymentUrl: response.data.paymentUrl,
+      transactionId: payload.transactionId
     });
+
   } catch (error) {
-    console.error("PhonePe Error:", error.response?.data || error.message);
+    console.error("2025 Payment Error:", {
+      error: error.response?.data || error.message,
+      timestamp: new Date().toISOString()
+    });
+    
     res.status(500).json({
-      error: "Payment failed",
-      details: error.response?.data || error.message
+      code: "PHONEPE_API_ERROR",
+      message: error.response?.data?.message || "Payment initiation failed",
+      details: error.response?.data?.errors || []
     });
   }
 });
 
-const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// 2025 Webhook Handler
+app.post("/payment-callback", (req, res) => {
+  const signature = req.headers["x-verify"];
+  const payload = req.body;
+
+  // Verify callback signature
+  const expectedSig = crypto.createHash("sha3-256")
+    .update(JSON.stringify(payload) + CONFIG.SALT_KEY)
+    .digest("hex") + `###${CONFIG.SALT_INDEX}`;
+
+  if (signature !== expectedSig) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  console.log("Payment Callback:", payload);
+  res.status(200).json({ status: "OK" });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Payment Service running on port ${PORT}`);
+  console.log(`Test Merchant ID: ${CONFIG.MERCHANT_ID}`);
+  console.log(`API Endpoint: ${CONFIG.BASE_URL}`);
+});
