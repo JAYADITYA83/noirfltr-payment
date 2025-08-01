@@ -33,14 +33,16 @@ app.post("/create-payment", async (req, res) => {
   const merchantTransactionId = `TXN${Date.now()}`;
   const payUrl = "/pg/v1/pay";
 
+  // Updated payload structure
   const payload = {
-    clientId: PHONEPE_MERCHANT_ID,
+    merchantId: PHONEPE_MERCHANT_ID,
     merchantTransactionId,
-    merchantUserId: email,
-    amount: amount * 100,
+    merchantUserId: "MUID" + Date.now(), // PhonePe expects merchantUserId
+    amount: amount * 100, // amount in paise
     redirectUrl: REDIRECT_URL,
     redirectMode: "POST",
-    mobileNumber: "9999999999",
+    callbackUrl: REDIRECT_URL, // some versions expect this
+    mobileNumber: "9999999999", // test number
     paymentInstrument: {
       type: "PAY_PAGE"
     }
@@ -57,7 +59,7 @@ app.post("/create-payment", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         "X-VERIFY": xVerify,
-        "X-CLIENT-ID": PHONEPE_MERCHANT_ID // ✅ Correct for clientId-based flow
+        "X-CLIENT-ID": PHONEPE_MERCHANT_ID
       }
     });
 
@@ -65,7 +67,10 @@ app.post("/create-payment", async (req, res) => {
     res.json({ paymentUrl: redirectUrl });
   } catch (error) {
     console.error("PhonePe API error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to create payment" });
+    res.status(500).json({ 
+      error: "Failed to create payment",
+      details: error.response?.data || error.message 
+    });
   }
 });
 
