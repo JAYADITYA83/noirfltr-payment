@@ -32,7 +32,7 @@ app.post("/create-payment", async (req, res) => {
   const payUrl = "/pg/v1/pay";
 
   const payload = {
-    merchantId: PHONEPE_MERCHANT_ID,
+    clientId: PHONEPE_MERCHANT_ID,
     merchantTransactionId,
     merchantUserId: email,
     amount: amount * 100,
@@ -55,7 +55,7 @@ app.post("/create-payment", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         "X-VERIFY": xVerify,
-        "X-MERCHANT-ID": PHONEPE_MERCHANT_ID
+        "X-CLIENT-ID": PHONEPE_MERCHANT_ID
       }
     });
 
