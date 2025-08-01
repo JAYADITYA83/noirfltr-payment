@@ -12,7 +12,7 @@ const CONFIG = {
   MERCHANT_ID: "PPTESTMERCHUAT2025", // New 2025 test merchant ID
   SALT_KEY: "a7b2c4f8-3d9e-4f1a-8b5c-9d6e1f2a3b4c", // 2025 test salt key
   SALT_INDEX: 1, // Always 1 for test environment
-  BASE_URL: "https://api-sandbox.phonepe.com/apis/v4/payment", // 2025 API endpoint
+  BASE_URL: "https://api-gw-sandbox.phonepe.com/apis/v4/payment", // 2025 API endpoint
   REDIRECT_URL: "https://yourdomain.com/payment-callback" // Must be HTTPS
 };
 
