@@ -32,13 +32,13 @@ app.post("/create-payment", async (req, res) => {
   const payUrl = "/pg/v1/pay";
 
 const payload = {
-  clientId: PHONEPE_MERCHANT_ID,
+  merchantId: PHONEPE_MERCHANT_ID, // ❗️ this should be "merchantId", not "clientId"
   merchantTransactionId,
   merchantUserId: email,
-  amount: Math.round(amount * 100),  // ensure integer
+  amount: Math.round(amount * 100), // amount in paisa, must be an integer
   redirectUrl: REDIRECT_URL,
   redirectMode: "POST",
-  mobileNumber: "9999999999",
+  mobileNumber: "9999999999", // optional
   paymentInstrument: {
     type: "PAY_PAGE"
   }
