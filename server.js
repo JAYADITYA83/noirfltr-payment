@@ -1,4 +1,4 @@
-import express from "express";
+now import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import crypto from "crypto";
@@ -28,28 +28,28 @@ console.log("Env Check:", {
 app.post("/create-payment", async (req, res) => {
   const { amount, name, email } = req.body;
 
-  const merchantTransactionId = `TXN${Date.now()}`;
+  const merchantTransactionId = TXN${Date.now()};
   const payUrl = "/pg/v1/pay";
 
-const payload = {
-  merchantId: PHONEPE_MERCHANT_ID, // ❗️ this should be "merchantId", not "clientId"
-  merchantTransactionId,
-  merchantUserId: email,
-  amount: Math.round(amount * 100), // amount in paisa, must be an integer
-  redirectUrl: REDIRECT_URL,
-  redirectMode: "POST",
-  mobileNumber: "9999999999", // optional
-  paymentInstrument: {
-    type: "PAY_PAGE"
-  }
-};
+  const payload = {
+    clientId: PHONEPE_MERCHANT_ID,
+    merchantTransactionId,
+    merchantUserId: email,
+    amount: amount * 100,
+    redirectUrl: REDIRECT_URL,
+    redirectMode: "POST",
+    mobileNumber: "9999999999",
+    paymentInstrument: {
+      type: "PAY_PAGE"
+    }
+  };
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
   const stringToHash = payloadBase64 + payUrl + PHONEPE_SECRET;
   const xVerify = crypto.createHash("sha256").update(stringToHash).digest("hex") + "###1";
 
   try {
-    const response = await axios.post(`${BASE_URL}${payUrl}`, {
+    const response = await axios.post(${BASE_URL}${payUrl}, {
       request: payloadBase64
     }, {
       headers: {
@@ -68,4 +68,4 @@ const payload = {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(🚀 Server running on port ${PORT}));
