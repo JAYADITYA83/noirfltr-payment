@@ -1,64 +1,73 @@
-import express from 'express';
-import axios from 'axios';
-import crypto from 'crypto';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import crypto from "crypto";
+import axios from "axios";
 
+dotenv.config();
 const app = express();
+app.use(cors());
+app.use(express.json());
 
-// PhonePe 2025 SANDBOX CONFIG (VERIFIED WORKING)
-const PHONEPE_CONFIG = {
-  MERCHANT_ID: "PGTESTPAYUAT2025", // Official test ID
-  SALT_KEY: "b9474d90-9a9a-4e00-827f-6e44efb16a5a", // Official test key
-  BASE_URL: "https://api-preprod-sandbox.phonepe.com/apis/v5/payment", // Working endpoint
-  REDIRECT_URL: "https://your-webhook-url.com/callback" // Must be HTTPS
-};
+const {
+  PHONEPE_MERCHANT_ID, // This is your clientId in UAT
+  PHONEPE_SECRET,      // This is your clientSecret in UAT
+  REDIRECT_URL,
+  BASE_URL
+} = process.env;
 
-app.post('/initiate-payment', async (req, res) => {
-  const { amount } = req.body;
+app.get("/", (req, res) => {
+  res.send("✅ PhonePe Backend is Live!");
+});
+
+console.log("Env Check:", {
+  BASE_URL,
+  PHONEPE_MERCHANT_ID,
+  PHONEPE_SECRET,
+  REDIRECT_URL
+});
+
+app.post("/create-payment", async (req, res) => {
+  const { amount, name, email } = req.body;
+
+  const merchantTransactionId = `TXN${Date.now()}`;
+  const payUrl = "/pg/v1/pay";
 
   const payload = {
-    merchantId: PHONEPE_CONFIG.MERCHANT_ID,
-    merchantTransactionId: `MT${Date.now()}`,
-    amount: amount * 100, // in paise
-    redirectUrl: PHONEPE_CONFIG.REDIRECT_URL,
-    redirectMode: "POST"
+    clientId: PHONEPE_MERCHANT_ID,
+    merchantTransactionId,
+    merchantUserId: email,
+    amount: amount * 100,
+    redirectUrl: REDIRECT_URL,
+    redirectMode: "POST",
+    mobileNumber: "9999999999",
+    paymentInstrument: {
+      type: "PAY_PAGE"
+    }
   };
 
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
+  const stringToHash = payloadBase64 + payUrl + PHONEPE_SECRET;
+  const xVerify = crypto.createHash("sha256").update(stringToHash).digest("hex") + "###1";
+
   try {
-    // Generate signature (SHA256)
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
-    const xVerify = crypto
-      .createHash('sha256')
-      .update(base64Payload + '/pg/v1/pay' + PHONEPE_CONFIG.SALT_KEY)
-      .digest('hex') + '###1';
-
-    const response = await axios.post(
-      `${PHONEPE_CONFIG.BASE_URL}/pg/v1/pay`,
-      { request: base64Payload },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-VERIFY': xVerify,
-          'X-CLIENT-ID': PHONEPE_CONFIG.MERCHANT_ID
-        }
+    const response = await axios.post(`${BASE_URL}${payUrl}`, {
+      request: payloadBase64
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+        "X-CLIENT-ID": PHONEPE_MERCHANT_ID // ✅ Correct for clientId-based flow
       }
-    );
-
-    res.json({
-      success: true,
-      paymentUrl: response.data.data.instrumentResponse.redirectInfo.url
     });
 
+    const redirectUrl = response.data.data.instrumentResponse.redirectInfo.url;
+    res.json({ paymentUrl: redirectUrl });
   } catch (error) {
-    console.error("Payment Error:", {
-      config: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    res.status(500).json({
-      error: "Payment failed",
-      details: error.response?.data || error.message
-    });
+    console.error("PhonePe API error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to create payment" });
   }
 });
 
-app.listen(10000, () => console.log('Server ready'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
