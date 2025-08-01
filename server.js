@@ -10,8 +10,8 @@ app.use(cors());
 app.use(express.json());
 
 const {
-  PHONEPE_MERCHANT_ID,
-  PHONEPE_SECRET,
+  PHONEPE_MERCHANT_ID, // This is your clientId in UAT
+  PHONEPE_SECRET,      // This is your clientSecret in UAT
   REDIRECT_URL,
   BASE_URL
 } = process.env;
@@ -19,16 +19,18 @@ const {
 app.get("/", (req, res) => {
   res.send("✅ PhonePe Backend is Live!");
 });
+
 console.log("Env Check:", {
   BASE_URL,
   PHONEPE_MERCHANT_ID,
   PHONEPE_SECRET,
   REDIRECT_URL
 });
+
 app.post("/create-payment", async (req, res) => {
   const { amount, name, email } = req.body;
 
-  const merchantTransactionId = TXN${Date.now()};
+  const merchantTransactionId = `TXN${Date.now()}`;
   const payUrl = "/pg/v1/pay";
 
   const payload = {
@@ -49,13 +51,13 @@ app.post("/create-payment", async (req, res) => {
   const xVerify = crypto.createHash("sha256").update(stringToHash).digest("hex") + "###1";
 
   try {
-    const response = await axios.post(${BASE_URL}${payUrl}, {
+    const response = await axios.post(`${BASE_URL}${payUrl}`, {
       request: payloadBase64
     }, {
       headers: {
         "Content-Type": "application/json",
         "X-VERIFY": xVerify,
-        "X-CLIENT-ID": PHONEPE_MERCHANT_ID
+        "X-CLIENT-ID": PHONEPE_MERCHANT_ID // ✅ Correct for clientId-based flow
       }
     });
 
@@ -68,4 +70,4 @@ app.post("/create-payment", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(🚀 Server running on port ${PORT}));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
