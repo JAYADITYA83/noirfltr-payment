@@ -19,7 +19,12 @@ const {
 app.get("/", (req, res) => {
   res.send("✅ PhonePe Backend is Live!");
 });
-
+console.log("Env Check:", {
+  BASE_URL,
+  PHONEPE_MERCHANT_ID,
+  PHONEPE_SECRET,
+  REDIRECT_URL
+});
 app.post("/create-payment", async (req, res) => {
   const { amount, name, email } = req.body;
 
